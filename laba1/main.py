@@ -1,11 +1,17 @@
 import numpy as np
 import re
 
-while (1):
-  element = input("Введите элемент(AND, NAND, NOR, OR, XOR, XNOR, BUF, INV): ")
-  output_cap = float(input("Введите выходную нагрузку элемента(fF): "))
-  input_transition = float(input("Введите время входного фронта(ps): "))
-  input_edge = input("Введите тип входного фронта(posedge(p) или negedge(n)): ")
+# while (1):
+for i in range(1):
+  element = "AND"
+  output_cap = 12.7
+  input_transition = 15.1
+  input_edge = "n"
+
+  # element = input("Введите элемент(AND, NAND, NOR, OR, XOR, XNOR, BUF, INV): ")
+  # output_cap = float(input("Введите выходную нагрузку элемента(fF): "))
+  # input_transition = float(input("Введите время входного фронта(ps): "))
+  # input_edge = input("Введите тип входного фронта(posedge(p) или negedge(n)): ")
 
   fl_sit = 0; # string_input_transtion flag
   fl_coc = 0; # column_output_capacitance flag
@@ -147,24 +153,60 @@ while (1):
   # print("fall_transition:\n" + str(fall_transition_np) + "\n")
   # print("rise_transition:\n" + str(rise_transition_np) + "\n")
 
-  closest_cap = min(coc_np, key=lambda x:abs(x-output_cap))
-  closest_cap_ind, = np.where(coc_np == closest_cap)
+  max_cap = min(filter(lambda x: x > output_cap, coc_np), default=None)
+  min_cap = max(filter(lambda x: x < output_cap, coc_np), default=None)
 
-  closest_transition = min(sit_np, key=lambda x:abs(x-input_transition))
-  closest_transition_ind, = np.where(sit_np == closest_transition)
+  max_transition = min(filter(lambda x: x > input_transition, sit_np), default=None)
+  min_transition = max(filter(lambda x: x < input_transition, sit_np), default=None)
+  
+  min_cap_ind, = np.where(coc_np == min_cap)
+  max_cap_ind, = np.where(coc_np == max_cap)
+  
+  min_transition_ind, = np.where(sit_np == min_transition)
+  max_transition_ind, = np.where(sit_np == max_transition)
+
 
   if (input_edge == "p" or input_edge == "posedge"):
-    output_transition = rise_transition_np[closest_transition_ind, closest_cap_ind]
+    q11_tr = rise_transition_np[min_transition_ind, min_cap_ind]
+    q12_tr = rise_transition_np[max_transition_ind, min_cap_ind]
+    q21_tr = rise_transition_np[min_transition_ind, max_cap_ind]
+    q22_tr = rise_transition_np[max_transition_ind, max_cap_ind]
   else:
-    output_transition = fall_transition_np[closest_transition_ind, closest_cap_ind]
+    q11_tr = fall_transition_np[min_transition_ind, min_cap_ind]
+    q12_tr = fall_transition_np[max_transition_ind, min_cap_ind]
+    q21_tr = fall_transition_np[min_transition_ind, max_cap_ind]
+    q22_tr = fall_transition_np[max_transition_ind, max_cap_ind]
 
   if (input_edge == "p" or input_edge == "posedge"):
-    output_edge = cell_rise_np[closest_transition_ind, closest_cap_ind]
+    q11_edge = cell_rise_np[min_transition_ind, min_cap_ind]
+    q12_edge = cell_rise_np[max_transition_ind, min_cap_ind]
+    q21_edge = cell_rise_np[min_transition_ind, max_cap_ind]
+    q22_edge = cell_rise_np[max_transition_ind, max_cap_ind]
   else:
-    output_edge = cell_fall_np[closest_transition_ind, closest_cap_ind]
-  print("Время выходной задержки: " + " ".join(map(str, output_transition)) + " пс")
-  print("Время выходного фронта: " + " ".join(map(str, output_edge)) + " пс\n")
-  # output_edge
+    q11_edge = cell_fall_np[min_transition_ind, min_cap_ind]
+    q12_edge = cell_fall_np[max_transition_ind, min_cap_ind]
+    q21_edge = cell_fall_np[min_transition_ind, max_cap_ind]
+    q22_edge = cell_fall_np[max_transition_ind, max_cap_ind]
+  
+  # print(min_cap_ind)
+  # print(min_transition_ind)
+  # print(q12_tr)
+  # print(q21_tr)
+  # print(q22_tr)
+  f_r1_tr = (max_cap - output_cap)/(max_cap - min_cap)*q11_tr + (output_cap - min_cap)/(max_cap - min_cap)*q21_tr
+  f_r2_tr = (max_cap - output_cap)/(max_cap - min_cap)*q12_tr + (output_cap - min_cap)/(max_cap - min_cap)*q22_tr
+  f_p_tr = (max_transition - input_transition)/(max_transition - min_transition)*f_r1_tr + (input_transition - min_transition)/(max_transition - min_transition)*f_r2_tr
+  f_r1_edge = (max_cap - output_cap)/(max_cap - min_cap)*q11_edge + (output_cap - min_cap)/(max_cap - min_cap)*q21_edge
+  # print(f_r1_edge)
+  f_r2_edge = (max_cap - output_cap)/(max_cap - min_cap)*q12_edge + (output_cap - min_cap)/(max_cap - min_cap)*q22_edge
+  # print(f_r2_edge)
+  f_p_edge = (max_transition - input_transition)/(max_transition - min_transition)*f_r1_edge + (input_transition - min_transition)/(max_transition - min_transition)*f_r2_edge
+  # print(f_p_edge)
+  # print("Время выходной задержки: " + str(f_p) + " пс")
+  print("Время выходной задержки: " + " ".join(map(str, f_p_tr)) + " пс")
+  print("Время выходного фронта: " + " ".join(map(str, f_p_edge)) + " пс\n")
+
+
 
 
 
